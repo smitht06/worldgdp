@@ -31,6 +31,6 @@ public class CountryDAO {
 
     private static final String PAGINATION_CLAUSE = " ORDER BY c.code "
             + "  LIMIT :offset , :size ";
-
+//comment
 
 }
