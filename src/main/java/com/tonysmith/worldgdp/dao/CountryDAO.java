@@ -1,6 +1,24 @@
 package com.tonysmith.worldgdp.dao;
 
+import com.tonysmith.worldgdp.dao.mapper.CountryRowMapper;
+import com.tonysmith.worldgdp.model.Country;
+import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+@Setter
 public class CountryDAO {
+
+    @Autowired
+    NamedParameterJdbcTemplate namedParamJdbcTemplate;
+
     private static final String SELECT_CLAUSE = "SELECT "
             + "c.Code, "
             + "c.Name, "
@@ -33,4 +51,81 @@ public class CountryDAO {
             + "  LIMIT :offset , :size ";
 //comment
 
+    private static final Integer PAGE_SIZE = 20;
+
+    public List<Country> getCountries(Map<String, Object> params){
+        int pageNo = 1;
+        if(params.containsKey("pageNo")){
+            pageNo = Integer.parseInt(params.get("pageNo").toString());
+        }
+        Integer offset = (pageNo -1) * PAGE_SIZE;
+        params.put("offset", offset);
+        params.put("size", PAGE_SIZE);
+        return namedParamJdbcTemplate.query(SELECT_CLAUSE
+                        + " WHERE 1 = 1 "
+                        + (!StringUtils.isEmpty((String)params.get("search"))
+                        ? SEARCH_WHERE_CLAUSE : "")
+                        + (!StringUtils.isEmpty((String)params.get("continent"))
+                        ? CONTINENT_WHERE_CLAUSE : "")
+                        + (!StringUtils.isEmpty((String)params.get("region"))
+                        ? REGION_WHERE_CLAUSE : "")
+                        + PAGINATION_CLAUSE,
+                params, new CountryRowMapper());
+    }
+
+    public int getCountriesCount(Map<String, Object> params) {
+        return namedParamJdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM country c"
+                        + " WHERE 1 = 1 "
+                        + (!StringUtils.isEmpty((String)params.get("search"))
+                        ? SEARCH_WHERE_CLAUSE : "")
+                        + (!StringUtils.isEmpty((String)params.get("continent"))
+                        ? CONTINENT_WHERE_CLAUSE : "")
+                        + (!StringUtils.isEmpty((String)params.get("region"))
+                        ? REGION_WHERE_CLAUSE : ""),
+                params, Integer.class);
+    }
+
+    public Country getCountryDetail(String code) {
+        Map<String, String> params = new HashMap<String, String>();
+        params.put("code", code);
+
+        return namedParamJdbcTemplate.queryForObject(SELECT_CLAUSE
+                        +"	WHERE c.code = :code", params,
+                new CountryRowMapper());
+    }
+
+    public void editCountryDetail(String code, Country country) {
+        namedParamJdbcTemplate.update(" UPDATE country SET "
+                        + " name = :name, "
+                        + " localname = :localName, "
+                        + " capital = :capital, "
+                        + " continent = :continent, "
+                        + " region = :region, "
+                        + " HeadOfState = :headOfState, "
+                        + " GovernmentForm = :governmentForm, "
+                        + " IndepYear = :indepYear, "
+                        + " SurfaceArea = :surfaceArea, "
+                        + " population = :population, "
+                        + " LifeExpectancy = :lifeExpectancy "
+                        + "WHERE Code = :code ",
+                getCountryAsMap(code, country));
+    }
+
+    private Map<String, Object> getCountryAsMap(String code, Country country){
+        Map<String, Object> countryMap = new HashMap<String, Object>();
+        countryMap.put("name", country.getName());
+        countryMap.put("localName", country.getLocalName());
+        countryMap.put("capital", country.getCapital().getId());
+        countryMap.put("continent", country.getContinent());
+        countryMap.put("region", country.getRegion());
+        countryMap.put("headOfState", country.getHeadOfState());
+        countryMap.put("governmentForm", country.getGovernmentForm());
+        countryMap.put("indepYear", country.getIndepYear());
+        countryMap.put("surfaceArea", country.getSurfaceArea());
+        countryMap.put("population", country.getPopulation());
+        countryMap.put("lifeExpectancy", country.getLifeExpectancy());
+        countryMap.put("code", code);
+        return countryMap;
+    }
 }
